@@ -57,7 +57,8 @@ HdStormRendererPlugin::DeleteRenderDelegate(HdRenderDelegate *renderDelegate)
 bool
 HdStormRendererPlugin::IsSupported() const
 {
-    return HdStRenderDelegate::IsSupported();
+    return true;
+    //return HdStRenderDelegate::IsSupported();
 }
 
 

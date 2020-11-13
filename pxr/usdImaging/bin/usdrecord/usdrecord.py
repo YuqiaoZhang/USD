@@ -49,6 +49,8 @@ def _SetupOpenGLContext(width=100, height=100):
     application = QApplication(sys.argv)
 
     glFormat = QtOpenGL.QGLFormat()
+    glFormat.setVersion(4, 3)
+    glFormat.setProfile(QtOpenGL.QGLFormat.CoreProfile)
     glFormat.setSampleBuffers(True)
     glFormat.setSamples(4)
 

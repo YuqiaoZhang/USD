@@ -507,6 +507,10 @@ HdSt_CodeGen::Compile()
         _genCommon << "#extension GL_ARB_shading_language_420pack : require\n";
     }
 
+    // fix bugs in OpenSubdiv
+    /// \file opensubdiv/osd/glslPatchCommon.glsl
+    _genCommon << "#if __VERSION__ >= 420\n#define centroid\n#endif\n";
+
     // Used in glslfx files to determine if it is using new/old
     // imaging system. It can also be used as API guards when
     // we need new versions of Storm shading. 
@@ -783,7 +787,16 @@ HdSt_CodeGen::Compile()
         _genTES << "mat4 OsdModelViewMatrix() { return mat4(1); }\n";
     }
     if (geometryShader.find("OsdInterpolatePatchCoord") != std::string::npos) {
-        _genGS <<  OpenSubdiv::Osd::GLSLPatchShaderSource::GetCommonShaderSource();
+        _genGS << OpenSubdiv::Osd::GLSLPatchShaderSource::GetCommonShaderSource();
+        _genGS << "MAT4 GetWorldToViewMatrix();\n";
+        _genGS << "MAT4 GetProjectionMatrix();\n";
+        _genGS << "float GetTessLevel();\n";
+        // we apply modelview in the vertex shader, so the osd shaders doesn't need
+        // to apply again.
+        _genGS << "mat4 OsdModelViewMatrix() { return mat4(1); }\n";
+        _genGS << "mat4 OsdProjectionMatrix() { return mat4(GetProjectionMatrix()); }\n";
+        _genGS << "int OsdPrimitiveIdBase() { return 0; }\n";
+        _genGS << "float OsdTessLevel() { return GetTessLevel(); }\n";
     }
 
     // geometric shader
@@ -2680,6 +2693,7 @@ HdSt_CodeGen::_GenerateShaderParameters()
                 << ");\n"
                 << "}\n";
         } else if (bindingType == HdBinding::BINDLESS_TEXTURE_2D) {
+#if 0 //mesa intel driver doesn't support
             // a function returning sampler2D is allowed in 430 or later
             if (caps.glslVersion >= 430) {
                 accessors
@@ -2689,6 +2703,7 @@ HdSt_CodeGen::_GenerateShaderParameters()
                     << "  return sampler2D(shaderData[shaderCoord]." << it->second.name << ");\n"
                     << "  }\n";
             }
+#endif
             accessors
                 << _GetUnpackedType(it->second.dataType, false)
                 << " HdGet_" << it->second.name << "() {\n"
@@ -2717,6 +2732,7 @@ HdSt_CodeGen::_GenerateShaderParameters()
             declarations
                 << LayoutQualifier(it->first)
                 << "uniform sampler2D sampler2d_" << it->second.name << ";\n";
+#if 0 //mesa intel driver doesn't support
             // a function returning sampler2D is allowed in 430 or later
             if (caps.glslVersion >= 430) {
                 accessors
@@ -2725,6 +2741,7 @@ HdSt_CodeGen::_GenerateShaderParameters()
                     << "  return sampler2d_" << it->second.name << ";"
                     << "}\n";
             }
+#endif
             // vec4 HdGet_name(vec2 coord) { return texture(sampler2d_name, coord).xyz; }
             accessors
                 << _GetUnpackedType(it->second.dataType, false)
@@ -2752,6 +2769,7 @@ HdSt_CodeGen::_GenerateShaderParameters()
             }
             accessors << "); }\n";
         } else if (bindingType == HdBinding::BINDLESS_TEXTURE_3D) {
+#if 0 //mesa intel driver doesn't support
             // a function returning sampler3D is allowed in 430 or later
             if (caps.glslVersion >= 430) {
                 accessors
@@ -2761,6 +2779,7 @@ HdSt_CodeGen::_GenerateShaderParameters()
                     << "  return sampler3D(shaderData[shaderCoord]." << it->second.name << ");\n"
                     << "  }\n";
             }
+#endif
             accessors
                 << _GetUnpackedType(it->second.dataType, false)
                 << " HdGet_" << it->second.name << "() {\n"
@@ -2789,6 +2808,7 @@ HdSt_CodeGen::_GenerateShaderParameters()
             declarations
                 << LayoutQualifier(it->first)
                 << "uniform sampler3D sampler3d_" << it->second.name << ";\n";
+#if 0 //mesa intel driver doesn't support
             // a function returning sampler3D is allowed in 430 or later
             if (caps.glslVersion >= 430) {
                 accessors
@@ -2797,6 +2817,7 @@ HdSt_CodeGen::_GenerateShaderParameters()
                     << "  return sampler3d_" << it->second.name << ";"
                     << "}\n";
             }
+#endif
             // vec4 HdGet_name(vec3 coord) { return texture(sampler3d_name, coord).xyz; }
             accessors
                 << _GetUnpackedType(it->second.dataType, false)
@@ -2824,6 +2845,7 @@ HdSt_CodeGen::_GenerateShaderParameters()
             }
             accessors << "); }\n";
         } else if (bindingType == HdBinding::BINDLESS_TEXTURE_UDIM_ARRAY) {
+#if 0 //mesa intel driver doesn't support
             // a function returning sampler2DArray is allowed in 430 or later
             if (caps.glslVersion >= 430) {
                 accessors
@@ -2834,6 +2856,7 @@ HdSt_CodeGen::_GenerateShaderParameters()
                     << it->second.name << ");\n"
                     << "  }\n";
             }
+#endif
             accessors
                 << it->second.dataType
                 << " HdGet_" << it->second.name << "()" << " {\n"
@@ -2865,6 +2888,7 @@ HdSt_CodeGen::_GenerateShaderParameters()
                 << "uniform sampler2DArray sampler2dArray_"
                 << it->second.name << ";\n";
 
+#if 0 //mesa intel driver doesn't support
             if (caps.glslVersion >= 430) {
                 accessors
                     << "sampler2DArray\n"
@@ -2872,6 +2896,7 @@ HdSt_CodeGen::_GenerateShaderParameters()
                     << "  return sampler2dArray_" << it->second.name << ";"
                     << "}\n";
             }
+#endif
             // vec4 HdGet_name(vec2 coord) { vec3 c = hd_sample_udim(coord);
             // c.z = texelFetch(sampler1d_name_layout, int(c.z), 0).x - 1;
             // if (c.z < -0.5) { return vec4(0, 0, 0, 0).xyz; } else {
